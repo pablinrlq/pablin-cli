@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.test-run-*/
+.release-venv/
+.coverage
+htmlcov/
+dist/
+build/
+AWSCLIV2-User.msi
+Imagem do Codex 16 de ago. de 2026, 14_53_54.png
