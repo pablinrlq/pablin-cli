@@ -87,6 +87,46 @@ def test_opens_catalog_with_all_demo_services() -> None:
             await pilot.pause()
 
             assert isinstance(app.screen, UniversalScreen)
-            assert app.screen.query_one("#catalog-services", OptionList).option_count == 6
+            assert app.screen.query_one("#catalog-services", OptionList).option_count == 16
+
+    asyncio.run(scenario())
+
+
+def test_service_shortcuts_are_enabled_and_open_the_selected_catalog() -> None:
+    async def scenario() -> None:
+        app = build_app(executor=DemoAwsCliExecutor(), demo=True)
+
+        async with app.run_test(size=(150, 46)) as pilot:
+            shortcuts = app.query(".catalog-service").results(Button)
+            shortcut_names = {button.name for button in shortcuts}
+            assert shortcut_names == {
+                "cloudformation",
+                "cloudwatch",
+                "dynamodb",
+                "ec2",
+                "ecs",
+                "eks",
+                "iam",
+                "logs",
+                "rds",
+                "route53",
+                "s3api",
+                "secretsmanager",
+                "sns",
+                "sqs",
+            }
+            assert all("em breve" not in str(button.label).casefold() for button in shortcuts)
+
+            ec2 = app.query_one("#service-ec2", Button)
+            assert ec2.disabled is False
+
+            ec2.scroll_visible(animate=False)
+            await pilot.pause()
+            await pilot.click(ec2)
+            await pilot.pause()
+
+            assert isinstance(app.screen, UniversalScreen)
+            assert app.screen.selected_service == "ec2"
+            assert app.screen.query_one("#catalog-operations", OptionList).option_count == 5
 
     asyncio.run(scenario())

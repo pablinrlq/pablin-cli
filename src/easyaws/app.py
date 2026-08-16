@@ -28,6 +28,24 @@ from .models import AwsContext, LambdaFunction
 from .universal_screen import UniversalScreen
 
 
+QUICK_SERVICES = (
+    ("EC2", "ec2"),
+    ("S3", "s3api"),
+    ("IAM", "iam"),
+    ("RDS", "rds"),
+    ("DynamoDB", "dynamodb"),
+    ("CloudWatch", "cloudwatch"),
+    ("CloudWatch Logs", "logs"),
+    ("ECS", "ecs"),
+    ("EKS", "eks"),
+    ("CloudFormation", "cloudformation"),
+    ("SQS", "sqs"),
+    ("SNS", "sns"),
+    ("Route 53", "route53"),
+    ("Secrets Manager", "secretsmanager"),
+)
+
+
 class PablinApp(App[None]):
     """Console AWS guiado dentro do terminal."""
 
@@ -274,7 +292,7 @@ class PablinApp(App[None]):
                         variant="error",
                     )
             with Horizontal(id="body"):
-                with Vertical(id="services"):
+                with VerticalScroll(id="services"):
                     yield Static("Serviços", id="services-title")
                     yield Input(placeholder="Pesquisar serviço...", id="service-search")
                     yield Button(
@@ -284,8 +302,13 @@ class PablinApp(App[None]):
                         variant="primary",
                     )
                     yield Button("λ  Lambda", id="lambda-service", classes="service-button")
-                    yield Button("▣  EC2  · em breve", disabled=True, classes="service-button")
-                    yield Button("◫  S3  · em breve", disabled=True, classes="service-button")
+                    for label, service in QUICK_SERVICES:
+                        yield Button(
+                            label,
+                            id=f"service-{service}",
+                            name=service,
+                            classes="service-button catalog-service",
+                        )
                 with VerticalScroll(id="workspace"):
                     yield Static("Lambda", id="lambda-title")
                     yield Static(
@@ -294,8 +317,6 @@ class PablinApp(App[None]):
                     )
                     with Horizontal(id="actions"):
                         yield Button("Listar funções", id="list-functions", variant="primary")
-                        yield Button("Criar função · em breve", disabled=True)
-                        yield Button("Ver logs · em breve", disabled=True)
                     yield LoadingIndicator(id="loading")
                     yield DataTable(id="functions-table")
                     yield Static("Nenhuma função selecionada.", id="selection")
@@ -465,11 +486,19 @@ class PablinApp(App[None]):
 
     @on(Button.Pressed, "#all-services")
     def handle_all_services(self) -> None:
+        self.open_catalog()
+
+    @on(Button.Pressed, ".catalog-service")
+    def handle_catalog_service(self, event: Button.Pressed) -> None:
+        self.open_catalog(event.button.name)
+
+    def open_catalog(self, service: str | None = None) -> None:
         self.push_screen(
             UniversalScreen(
                 executor=self.executor,
                 catalog=self.catalog,
                 context_provider=self.current_context,
+                initial_service=service,
             )
         )
 

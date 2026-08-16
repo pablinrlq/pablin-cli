@@ -17,6 +17,8 @@ antes de executá-lo.
 - troca de conta com confirmação, logout e limpeza restrita ao perfil atual;
 - catálogo dinâmico baseado na versão local da AWS CLI;
 - centenas de serviços e operações, sem uma lista fixa mantida pelo projeto;
+- atalhos funcionais para EC2, S3, IAM, RDS, DynamoDB, CloudWatch, Logs, ECS,
+  EKS, CloudFormation, SQS, SNS, Route 53 e Secrets Manager;
 - formulário JSON gerado pelo `--generate-cli-skeleton input` oficial;
 - argumentos extras e prévia do comando antes da execução;
 - classificação em leitura, alteração e operação destrutiva;

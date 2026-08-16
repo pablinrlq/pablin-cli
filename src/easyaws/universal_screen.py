@@ -156,12 +156,14 @@ class UniversalScreen(Screen[None]):
         executor: CommandExecutor,
         catalog: AwsCliCatalog,
         context_provider: Callable[[], AwsContext],
+        initial_service: str | None = None,
     ) -> None:
         super().__init__()
         self.executor = executor
         self.catalog = catalog
         self.context_provider = context_provider
         self.universal = UniversalAwsService(executor)
+        self.initial_service = initial_service
         self.services: list[str] = []
         self.operations: list[str] = []
         self.selected_service: str | None = None
@@ -268,6 +270,11 @@ class UniversalScreen(Screen[None]):
             self.query_one("#operation-meta", Static).update(
                 f"{len(self.services)} serviços descobertos na AWS CLI instalada."
             )
+            if self.initial_service in self.services:
+                service_list = self.query_one("#catalog-services", OptionList)
+                service_list.highlighted = self.services.index(self.initial_service)
+                self.selected_service = self.initial_service
+                await self.load_operations(self.initial_service)
         finally:
             self.set_loading(False)
 

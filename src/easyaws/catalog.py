@@ -130,11 +130,21 @@ class DemoAwsCliCatalog(AwsCliCatalog):
     """Catálogo pequeno, porém representativo, para o modo de demonstração."""
 
     SERVICES = {
+        "apigateway": ["create-rest-api", "delete-rest-api", "get-rest-apis"],
+        "cloudwatch": ["delete-alarms", "describe-alarms", "list-metrics", "put-metric-alarm"],
         "cloudformation": ["create-stack", "delete-stack", "describe-stacks", "list-stacks"],
         "dynamodb": ["create-table", "delete-table", "describe-table", "list-tables", "scan"],
         "ec2": ["describe-instances", "run-instances", "start-instances", "stop-instances", "terminate-instances"],
+        "ecs": ["create-cluster", "delete-cluster", "describe-services", "list-clusters", "list-services"],
+        "eks": ["create-cluster", "delete-cluster", "describe-cluster", "list-clusters"],
+        "iam": ["create-role", "delete-role", "get-role", "list-roles", "list-users"],
         "lambda": ["create-function", "delete-function", "get-function", "invoke", "list-functions", "update-function-configuration"],
+        "logs": ["create-log-group", "delete-log-group", "describe-log-groups", "filter-log-events"],
+        "rds": ["create-db-instance", "delete-db-instance", "describe-db-instances", "start-db-instance", "stop-db-instance"],
+        "route53": ["change-resource-record-sets", "get-hosted-zone", "list-hosted-zones"],
         "s3api": ["create-bucket", "delete-bucket", "get-object", "list-buckets", "list-objects-v2", "put-object"],
+        "secretsmanager": ["create-secret", "delete-secret", "describe-secret", "list-secrets"],
+        "sns": ["create-topic", "delete-topic", "list-subscriptions", "list-topics", "publish"],
         "sqs": ["create-queue", "delete-queue", "get-queue-attributes", "list-queues", "send-message"],
     }
 
