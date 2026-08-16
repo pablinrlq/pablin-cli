@@ -1,5 +1,9 @@
 # Pablin CLI
 
+[![PyPI](https://img.shields.io/pypi/v/pablin-cli)](https://pypi.org/project/pablin-cli/)
+[![CI](https://github.com/pablinrlq/pablin-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/pablinrlq/pablin-cli/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/pypi/pyversions/pablin-cli)](https://pypi.org/project/pablin-cli/)
+
 Uma interface visual, guiada e segura para a AWS CLI. O Pablin CLI ajuda você a
 encontrar serviços e operações, preencher parâmetros e revisar o comando exato
 antes de executá-lo.
@@ -32,7 +36,7 @@ possuem todas um formulário especializado como o fluxo de Lambda.
 
 ## Instalação
 
-Depois que o pacote estiver publicado no PyPI, a forma recomendada será:
+A forma recomendada de instalar pelo PyPI é:
 
 ```powershell
 pipx install pablin-cli
