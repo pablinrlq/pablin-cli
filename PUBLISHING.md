@@ -8,6 +8,9 @@
 
 ```powershell
 pytest
+python -m bandit -q -r src -ll -ii
+python -m pip_audit . --strict
+python -m pip_audit --skip-editable
 python -m build
 python -m twine check dist/*
 ```
@@ -32,7 +35,7 @@ GitHub. Antes do primeiro release:
 2. crie o projeto `pablin-cli` no PyPI ou configure um publisher pendente;
 3. no PyPI, associe o proprietário/repositório, workflow
    `.github/workflows/publish.yml` e ambiente `pypi`;
-4. crie o ambiente `pypi` no GitHub e habilite aprovação manual, se desejado;
+4. crie o ambiente protegido `pypi` no GitHub;
 5. envie uma tag igual à versão, por exemplo `v0.1.0`.
 
 ```powershell
@@ -42,3 +45,6 @@ git push origin v0.1.0
 
 Versões publicadas no PyPI não podem ser sobrescritas. Se algo estiver errado,
 incremente a versão e publique uma nova distribuição.
+
+As Actions devem permanecer fixadas por SHA completo. O Dependabot abre PRs para
+atualizar esses SHAs sem voltar a usar tags mutáveis.

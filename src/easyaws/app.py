@@ -280,8 +280,8 @@ class PablinApp(App[None]):
                         variant="warning",
                     )
                 yield Static(
-                    "A troca encerra a sessão e remove credenciais somente deste perfil. "
-                    "Os demais perfis não serão alterados.",
+                    "A troca encerra a sessão e remove as fontes de autenticação "
+                    "somente deste perfil. Os demais perfis não serão alterados.",
                     id="switch-warning",
                 )
                 with Horizontal(id="switch-actions"):

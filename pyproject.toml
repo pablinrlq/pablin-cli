@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=75"]
+requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pablin-cli"
-version = "0.2.0"
+version = "0.3.0"
 description = "Uma interface visual, guiada e segura para a AWS CLI."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -15,7 +15,7 @@ authors = [
 ]
 keywords = ["aws", "aws-cli", "cloud", "terminal", "tui"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
@@ -26,7 +26,7 @@ classifiers = [
   "Topic :: System :: Systems Administration",
 ]
 dependencies = [
-  "textual>=8.2.8,<9",
+  "textual==8.2.8",
 ]
 
 [project.urls]
@@ -38,8 +38,10 @@ Changelog = "https://github.com/pablinrlq/pablin-cli/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 dev = [
   "build==1.5.0",
-  "pytest>=8,<10",
-  "twine>=6.2,<7",
+  "bandit==1.9.4",
+  "pip-audit==2.10.1",
+  "pytest==9.1.1",
+  "twine==7.0.0",
 ]
 
 [project.scripts]

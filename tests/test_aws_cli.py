@@ -33,7 +33,9 @@ def test_executor_uses_shell_false_and_parses_json(monkeypatch: pytest.MonkeyPat
     def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
         seen["argv"] = argv
         seen["shell"] = kwargs["shell"]
-        return subprocess.CompletedProcess(argv, 0, json.dumps({"Functions": []}), "")
+        seen["environment"] = kwargs["env"]
+        kwargs["stdout"].write(json.dumps({"Functions": []}).encode())  # type: ignore[union-attr]
+        return subprocess.CompletedProcess(argv, 0)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     executor = AwsCliExecutor(binary="aws-test")
@@ -42,11 +44,15 @@ def test_executor_uses_shell_false_and_parses_json(monkeypatch: pytest.MonkeyPat
     assert executor.run_json(command) == {"Functions": []}
     assert seen["argv"] == ["aws-test", "lambda", "list-functions"]
     assert seen["shell"] is False
+    environment = seen["environment"]
+    assert isinstance(environment, dict)
+    assert environment["AWS_IGNORE_CONFIGURED_ENDPOINT_URLS"] == "true"
 
 
 def test_executor_can_run_non_json_commands(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(argv, 0, "logout ok\n", "")
+        kwargs["stdout"].write(b"logout ok\n")  # type: ignore[union-attr]
+        return subprocess.CompletedProcess(argv, 0)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     executor = AwsCliExecutor(binary="aws-test")
@@ -58,7 +64,8 @@ def test_executor_can_run_non_json_commands(monkeypatch: pytest.MonkeyPatch) -> 
 
 def test_executor_translates_missing_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(argv, 255, "", "Unable to locate credentials")
+        kwargs["stderr"].write(b"Unable to locate credentials")  # type: ignore[union-attr]
+        return subprocess.CompletedProcess(argv, 255)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     executor = AwsCliExecutor(binary="aws-test")
@@ -67,6 +74,38 @@ def test_executor_translates_missing_credentials(monkeypatch: pytest.MonkeyPatch
         executor.run_json(AwsCommand(("lambda", "list-functions"), "listar"))
 
     assert "credenciais" in captured.value.friendly_message
+
+
+def test_executor_rejects_oversized_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        kwargs["stdout"].write(b"x" * 1025)  # type: ignore[union-attr]
+        return subprocess.CompletedProcess(argv, 0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    executor = AwsCliExecutor(binary="aws-test", output_limit_bytes=1024)
+
+    with pytest.raises(AwsCliError, match="mais de"):
+        executor.run_text(AwsCommand(("s3api", "list-objects-v2"), "listar"))
+
+
+def test_custom_endpoints_require_explicit_opt_in(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen: dict[str, str] = {}
+
+    def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        seen.update(kwargs["env"])  # type: ignore[arg-type]
+        return subprocess.CompletedProcess(argv, 0)
+
+    monkeypatch.setenv("AWS_ENDPOINT_URL", "https://example.invalid")
+    monkeypatch.setenv("PABLIN_ALLOW_CUSTOM_ENDPOINTS", "1")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    AwsCliExecutor(binary="aws-test").run_text(
+        AwsCommand(("sts", "get-caller-identity"), "id")
+    )
+
+    assert "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS" not in seen
 
 
 def test_finds_user_install_when_path_has_not_refreshed(

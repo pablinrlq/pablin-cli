@@ -45,23 +45,53 @@ _DESTRUCTIVE_PREFIXES = (
 )
 _BLOCKED_EXTRA_OPTIONS = {
     "--ca-bundle",
+    "--cli-auto-prompt",
+    "--cli-input-json",
+    "--cli-input-yaml",
+    "--debug",
     "--endpoint-url",
     "--generate-cli-skeleton",
+    "--no-cli-auto-prompt",
+    "--no-cli-pager",
     "--no-sign-request",
     "--no-verify-ssl",
     "--output",
     "--profile",
     "--region",
 }
+_LOCAL_WRITE_OPERATIONS = {
+    ("glacier", "get-job-output"),
+    ("s3api", "get-object"),
+}
+_SENSITIVE_READ_OPERATIONS = {
+    ("codeartifact", "get-authorization-token"),
+    ("cognito-identity", "get-credentials-for-identity"),
+    ("ecr", "get-login-password"),
+    ("eks", "get-token"),
+    ("secretsmanager", "batch-get-secret-value"),
+    ("secretsmanager", "get-random-password"),
+    ("secretsmanager", "get-secret-value"),
+    ("ssm", "get-parameter"),
+    ("ssm", "get-parameters"),
+    ("ssm", "get-parameters-by-path"),
+    ("sts", "get-session-token"),
+}
 
 
 class RiskLevel(str, Enum):
     READ_ONLY = "somente leitura"
+    SENSITIVE = "pode exibir credenciais ou dados sensíveis"
+    LOCAL_WRITE = "pode gravar ou substituir um arquivo local"
     MUTATING = "altera recursos"
     DESTRUCTIVE = "pode remover/interromper recursos"
 
 
-def classify_operation(operation: str) -> RiskLevel:
+def classify_operation(operation: str, *, service: str = "") -> RiskLevel:
+    operation_key = (service, operation)
+    if operation_key in _LOCAL_WRITE_OPERATIONS:
+        return RiskLevel.LOCAL_WRITE
+    if operation_key in _SENSITIVE_READ_OPERATIONS:
+        return RiskLevel.SENSITIVE
     if operation.startswith(_READ_ONLY_PREFIXES):
         return RiskLevel.READ_ONLY
     if operation.startswith(_DESTRUCTIVE_PREFIXES):
@@ -138,11 +168,11 @@ class UniversalAwsService:
         arguments.extend(extras)
         arguments.extend(context.global_arguments())
 
-        risk = classify_operation(operation)
+        risk = classify_operation(operation, service=service)
         return AwsCommand(
             arguments=tuple(arguments),
             description=f"Executar {service} {operation}",
-            mutates=risk is not RiskLevel.READ_ONLY,
+            mutates=risk in {RiskLevel.MUTATING, RiskLevel.DESTRUCTIVE},
         )
 
     def execute(self, command: AwsCommand) -> str:

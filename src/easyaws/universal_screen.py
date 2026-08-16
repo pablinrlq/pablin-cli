@@ -339,7 +339,7 @@ class UniversalScreen(Screen[None]):
             return
         self.selected_operation = event.option.id
         self.invalidate_review()
-        risk = classify_operation(self.selected_operation)
+        risk = classify_operation(self.selected_operation, service=self.selected_service)
         self.query_one("#operation-title", Static).update(
             f"{self.selected_service} · {self.selected_operation}"
         )
@@ -411,7 +411,7 @@ class UniversalScreen(Screen[None]):
             self.notify(str(error), title="Não foi possível revisar", severity="error")
             return
 
-        risk = classify_operation(self.selected_operation)
+        risk = classify_operation(self.selected_operation, service=self.selected_service)
         self.pending_command = command
         self.query_one("#universal-preview", Static).update(
             f"[b]Risco:[/b] {risk.value}\n[b]Comando:[/b]\n$ {escape(command.display())}"

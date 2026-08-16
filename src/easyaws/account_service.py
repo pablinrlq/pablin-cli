@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from .aws_cli import AwsCliError, AwsCommand, CommandExecutor
+from .config import clear_profile_authentication
 from .lambda_service import validate_context
 from .models import AwsContext, AwsIdentity
 
@@ -10,16 +13,13 @@ from .models import AwsContext, AwsIdentity
 class AccountService:
     """Consulta o STS e gerencia somente o perfil explicitamente selecionado."""
 
-    _CREDENTIAL_KEYS = (
-        "aws_access_key_id",
-        "aws_secret_access_key",
-        "aws_session_token",
-        "credential_process",
-        "login_session",
-    )
-
-    def __init__(self, executor: CommandExecutor) -> None:
+    def __init__(
+        self,
+        executor: CommandExecutor,
+        credential_cleaner: Callable[[str], None] = clear_profile_authentication,
+    ) -> None:
         self.executor = executor
+        self.credential_cleaner = credential_cleaner
 
     def identity_command(self, context: AwsContext) -> AwsCommand:
         validate_context(context)
@@ -44,15 +44,6 @@ class AccountService:
             mutates=True,
         )
 
-    def unset_command(self, profile: str, key: str) -> AwsCommand:
-        if key not in self._CREDENTIAL_KEYS:
-            raise ValueError("Chave de credencial não permitida para limpeza.")
-        return AwsCommand(
-            arguments=("configure", "unset", key, "--profile", profile),
-            description=f"Remover {key} somente do perfil {profile}",
-            mutates=True,
-        )
-
     def login_command(self, context: AwsContext) -> AwsCommand:
         validate_context(context)
         if not context.profile:
@@ -70,6 +61,25 @@ class AccountService:
             mutates=True,
         )
 
+    def credential_source_command(self, profile: str) -> AwsCommand:
+        return AwsCommand(
+            arguments=("configure", "list", "--profile", profile),
+            description=f"Verificar a origem das credenciais do perfil {profile}",
+        )
+
+    @staticmethod
+    def _validate_login_source(output: str) -> None:
+        credential_types: dict[str, str] = {}
+        for line in output.splitlines():
+            fields = [field.strip().lower() for field in line.split(":", 3)]
+            if len(fields) == 4 and fields[0] in {"access_key", "secret_key"}:
+                credential_types[fields[0]] = fields[2]
+        if credential_types != {"access_key": "login", "secret_key": "login"}:
+            raise AwsCliError(
+                "O login terminou, mas a AWS CLI ainda não está usando credenciais "
+                "do tipo login neste perfil."
+            )
+
     def switch_account(self, context: AwsContext) -> AwsIdentity:
         """Remove credenciais do perfil escolhido e inicia um novo login."""
 
@@ -85,8 +95,8 @@ class AccountService:
             if "login" not in detail and "session" not in detail and "cache" not in detail:
                 raise
 
-        for key in self._CREDENTIAL_KEYS:
-            self.executor.run_text(self.unset_command(profile, key))
-
+        self.credential_cleaner(profile)
         self.executor.run_text(self.login_command(context), timeout_seconds=600)
+        source = self.executor.run_text(self.credential_source_command(profile))
+        self._validate_login_source(source)
         return self.get_identity(context)

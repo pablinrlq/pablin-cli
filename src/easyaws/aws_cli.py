@@ -7,9 +7,29 @@ import os
 import shlex
 import shutil
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
+
+
+_DEFAULT_OUTPUT_LIMIT_BYTES = 8 * 1024 * 1024
+
+
+def _aws_environment() -> dict[str, str]:
+    """Cria um ambiente previsível e seguro para subprocessos da AWS CLI."""
+
+    environment = os.environ.copy()
+    environment["AWS_PAGER"] = ""
+    environment["AWS_CLI_AUTO_PROMPT"] = "off"
+    if environment.get("PABLIN_ALLOW_CUSTOM_ENDPOINTS") != "1":
+        environment["AWS_IGNORE_CONFIGURED_ENDPOINT_URLS"] = "true"
+    return environment
+
+
+def _read_capture(stream: Any) -> str:
+    stream.seek(0)
+    return stream.read().decode("utf-8", errors="replace")
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,9 +95,17 @@ class AwsCliError(RuntimeError):
 class AwsCliExecutor:
     """Executa a AWS CLI sem passar argumentos por um shell."""
 
-    def __init__(self, binary: str | None = None, timeout_seconds: int = 120) -> None:
+    def __init__(
+        self,
+        binary: str | None = None,
+        timeout_seconds: int = 120,
+        output_limit_bytes: int = _DEFAULT_OUTPUT_LIMIT_BYTES,
+    ) -> None:
+        if output_limit_bytes < 1:
+            raise ValueError("O limite de saída precisa ser positivo.")
         self.binary = binary or find_aws_binary()
         self.timeout_seconds = timeout_seconds
+        self.output_limit_bytes = output_limit_bytes
 
     @property
     def available(self) -> bool:
@@ -95,6 +123,7 @@ class AwsCliExecutor:
             timeout=15,
             check=False,
             shell=False,
+            env=_aws_environment(),
         )
         output = (completed.stdout or completed.stderr).strip()
         if completed.returncode != 0:
@@ -115,16 +144,40 @@ class AwsCliExecutor:
 
         timeout = timeout_seconds or self.timeout_seconds
         try:
-            completed = subprocess.run(
-                [self.binary, *command.arguments],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=timeout,
-                check=False,
-                shell=False,
-            )
+            with (
+                tempfile.TemporaryFile() as stdout_stream,
+                tempfile.TemporaryFile() as stderr_stream,
+            ):
+                completed = subprocess.run(
+                    [self.binary, *command.arguments],
+                    stdout=stdout_stream,
+                    stderr=stderr_stream,
+                    timeout=timeout,
+                    check=False,
+                    shell=False,
+                    env=_aws_environment(),
+                )
+                stdout_stream.flush()
+                stderr_stream.flush()
+                output_size = os.fstat(stdout_stream.fileno()).st_size + os.fstat(
+                    stderr_stream.fileno()
+                ).st_size
+                if output_size > self.output_limit_bytes:
+                    limit_mib = self.output_limit_bytes / (1024 * 1024)
+                    raise AwsCliError(
+                        f"A AWS CLI produziu mais de {limit_mib:g} MiB. "
+                        "Refine a consulta ou use filtros/paginação.",
+                        command=command,
+                        return_code=completed.returncode,
+                    )
+                stdout = _read_capture(stdout_stream)
+                stderr = _read_capture(stderr_stream)
+                completed = subprocess.CompletedProcess(
+                    completed.args,
+                    completed.returncode,
+                    stdout,
+                    stderr,
+                )
         except subprocess.TimeoutExpired as error:
             raise AwsCliError(
                 f"A AWS CLI excedeu o limite de {timeout} segundos.",
@@ -279,6 +332,14 @@ class DemoAwsCliExecutor:
                 },
             }
             return json.dumps(examples.get((service, operation), {}), indent=2)
+        if arguments[:2] == ("configure", "list"):
+            return (
+                "NAME       : VALUE     : TYPE  : LOCATION\n"
+                "profile    : demo      : manual: --profile\n"
+                "access_key : ********  : login :\n"
+                "secret_key : ********  : login :\n"
+                "region     : sa-east-1 : config-file : ~/.aws/config"
+            )
         if arguments and arguments[0] in {"logout", "configure"}:
             return ""
         if arguments and arguments[0] == "login":

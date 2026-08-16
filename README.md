@@ -8,20 +8,22 @@ Uma interface visual, guiada e segura para a AWS CLI. O Pablin CLI ajuda você a
 encontrar serviços e operações, preencher parâmetros e revisar o comando exato
 antes de executá-lo.
 
-> Projeto em estágio alpha. Sempre revise o comando, a conta e a região antes de
-> confirmar uma operação mutável.
+> Projeto em estágio beta. Sempre revise o comando, a conta e a região antes de
+> confirmar uma operação.
 
 ## O que já funciona
 
 - mostra conta, principal, ARN, perfil e região assim que abre;
-- troca de conta com confirmação, logout e limpeza restrita ao perfil atual;
+- troca de conta com confirmação, limpeza das fontes de autenticação do perfil e
+  verificação de que o novo login realmente está ativo;
 - catálogo dinâmico baseado na versão local da AWS CLI;
 - centenas de serviços e operações, sem uma lista fixa mantida pelo projeto;
 - atalhos funcionais para EC2, S3, IAM, RDS, DynamoDB, CloudWatch, Logs, ECS,
   EKS, CloudFormation, SQS, SNS, Route 53 e Secrets Manager;
 - formulário JSON gerado pelo `--generate-cli-skeleton input` oficial;
 - argumentos extras e prévia do comando antes da execução;
-- classificação em leitura, alteração e operação destrutiva;
+- classificação em leitura, dados sensíveis, gravação local, alteração e
+  operação destrutiva;
 - confirmação `CONFIRMAR` para alterações e `EXCLUIR` para exclusões;
 - fluxo especializado para listar funções Lambda e alterar memória;
 - modo de demonstração que não acessa a AWS.
@@ -91,8 +93,23 @@ somente as chaves de autenticação do perfil escolhido e inicia `aws login`. Os
 demais perfis não são modificados.
 
 Operações classificadas como mutáveis ou destrutivas exigem confirmação humana.
-Essa classificação é uma camada adicional de proteção, não uma substituição para
-IAM com privilégio mínimo, ambientes de teste e revisão do comando.
+Leituras que podem revelar credenciais/dados sensíveis ou substituir arquivos
+locais também exigem confirmação. A classificação é uma camada adicional de
+proteção, não uma substituição para IAM com privilégio mínimo, ambientes de teste
+e revisão do comando.
+
+Por padrão, o processo da AWS CLI ignora endpoints customizados vindos de perfis
+ou variáveis de ambiente, desativa pager/auto-prompt e rejeita respostas maiores
+que 8 MiB. Para um ambiente local confiável como LocalStack, libere endpoints
+customizados conscientemente antes de abrir o Pablin:
+
+```powershell
+$env:PABLIN_ALLOW_CUSTOM_ENDPOINTS = "1"
+pablin
+```
+
+Não habilite essa opção ao usar credenciais reais contra endpoints que você não
+controla.
 
 ## Desenvolvimento
 
