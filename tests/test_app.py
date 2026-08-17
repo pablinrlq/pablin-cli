@@ -40,11 +40,15 @@ def test_demo_flow_lists_reviews_and_updates_a_function() -> None:
             confirm.scroll_visible(animate=False)
             await pilot.pause()
             confirm.press()
-            await pilot.pause()
-
-            changed = next(
-                item for item in executor.functions if item["FunctionName"] == "enviar-email"
-            )
+            for _ in range(50):
+                await pilot.pause(0.02)
+                changed = next(
+                    item
+                    for item in executor.functions
+                    if item["FunctionName"] == "enviar-email"
+                )
+                if changed["MemorySize"] == 256:
+                    break
             assert changed["MemorySize"] == 256
 
     asyncio.run(scenario())
