@@ -37,7 +37,7 @@ Changelog = "https://github.com/pablinrlq/pablin-cli/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
-  "build==1.5.0",
+  "build==1.6.0",
   "bandit==1.9.4",
   "pip-audit==2.10.1",
   "pytest==9.1.1",
